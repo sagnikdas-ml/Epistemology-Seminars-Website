@@ -34,13 +34,15 @@ Then open the local URL from Wrangler output.
 1. Create a Google Sheet with headers:
    `date,speaker,title,link`
 2. Optional headers:
-   `time,venue,abstract,published`
+   `speaker_detail,speaker_portfolio,time,end_time,timezone,venue,abstract,published`
 3. Make sure the sheet is publicly readable (`Anyone with the link` as Viewer).
 4. The Worker is already configured to this sheet URL; optional override is `GOOGLE_SHEET_CSV_URL`.
 
 Rules:
 - `date`: `YYYY-MM-DD`
 - `time` (optional): `HH:MM` (24-hour)
+- `end_time` (optional): `HH:MM` (24-hour)
+- `timezone` (optional): IANA timezone (example: `Europe/Berlin`) or `CEST/CET`; default is CEST/CET
 - `published` (optional): `yes` or `no` (defaults to `yes`)
 
 ## Deploy

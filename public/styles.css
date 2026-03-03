@@ -65,6 +65,12 @@ h2 {
   max-width: 70ch;
 }
 
+.timezone-note {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .panel {
   margin: 1rem 0;
   background: color-mix(in srgb, var(--panel) 88%, #ffffff 12%);
@@ -130,6 +136,27 @@ h2 {
   font-weight: 600;
 }
 
+.speaker-detail {
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+
+.speaker-portfolio-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.speaker-portfolio-link:hover {
+  filter: brightness(0.92);
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
 .register-link {
   color: white;
   background: linear-gradient(120deg, var(--accent), #1f8977);
@@ -142,6 +169,21 @@ h2 {
 
 .register-link:hover {
   filter: brightness(1.08);
+}
+
+.calendar-link {
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--stroke) 60%);
+  background: color-mix(in srgb, var(--accent) 8%, #fff 92%);
+  padding: 0.56rem 0.85rem;
+  border-radius: 10px;
+  width: fit-content;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.calendar-link:hover {
+  filter: brightness(0.97);
 }
 
 .cards-past .card {

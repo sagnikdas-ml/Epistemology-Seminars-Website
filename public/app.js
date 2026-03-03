@@ -1,4 +1,13 @@
 const SEMINARS_API_ENDPOINT = "/api/seminars.csv";
+const DEFAULT_TIME_ZONE = "Europe/Berlin";
+const DEFAULT_TIME_ZONE_LABEL = "CEST/CET";
+const DEFAULT_EVENT_DURATION_MINUTES = 90;
+
+const TIME_ZONE_ALIASES = {
+  CEST: "Europe/Berlin",
+  CET: "Europe/Berlin",
+  CST: "Europe/Berlin",
+};
 
 const upcomingList = document.getElementById("upcoming-list");
 const pastList = document.getElementById("past-list");
@@ -39,7 +48,7 @@ async function init() {
     .map(normalizeSeminar)
     .filter((item) => item.ok)
     .map((item) => item.value)
-    .sort((a, b) => a.date.getTime() - b.date.getTime());
+    .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
 
   renderSeminars(seminars);
 }
@@ -122,9 +131,13 @@ function normalizeSeminar(raw) {
     return { ok: false };
   }
 
-  const time = (raw.time || "").trim();
-  const parsedDate = parseDate(raw.date, time);
-  if (!parsedDate) {
+  const startTime = normalizeTimeInput(raw.time || "");
+  const endTime = normalizeTimeInput(raw.end_time || "");
+  const timeZone = resolveTimeZone(raw.timezone || "");
+  const timeZoneLabel = (raw.timezone || "").trim() || DEFAULT_TIME_ZONE_LABEL;
+
+  const window = parseSeminarWindow(raw.date, startTime, endTime, timeZone);
+  if (!window) {
     return { ok: false };
   }
 
@@ -133,10 +146,18 @@ function normalizeSeminar(raw) {
   return {
     ok: true,
     value: {
-      date: parsedDate,
-      hasTime: Boolean(time),
+      dateIso: raw.date,
+      startAt: window.startAt,
+      endAt: window.endAt,
+      hasTime: window.hasTime,
+      startTime,
+      endTime,
+      timeZone,
+      timeZoneLabel,
       title: raw.title,
       speaker: raw.speaker,
+      speakerDetail: (raw.speaker_detail || raw.affiliation || "").trim(),
+      speakerPortfolio: (raw.speaker_portfolio || raw.speaker_url || "").trim(),
       venue: raw.venue || "",
       registerLink,
       abstract: raw.abstract || "",
@@ -145,20 +166,188 @@ function normalizeSeminar(raw) {
   };
 }
 
-function parseDate(dateInput, timeInput) {
-  const effectiveTime = timeInput || "23:59";
-  const dateTime = new Date(`${dateInput}T${effectiveTime}`);
-  if (Number.isNaN(dateTime.getTime())) {
+function normalizeTimeInput(value) {
+  const text = String(value || "").trim();
+  if (!text) {
+    return "";
+  }
+
+  const match = text.match(/^(\d{1,2})[:.](\d{2})$/);
+  if (!match) {
+    return "";
+  }
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return "";
+  }
+
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function parseSeminarWindow(dateInput, startTime, endTime, timeZone) {
+  if (!isValidDateIso(dateInput)) {
     return null;
   }
-  return dateTime;
+
+  if (!startTime) {
+    const startAt = zonedDateTimeToUtc(dateInput, "00:00", timeZone);
+    const nextDateIso = incrementDateIso(dateInput);
+    const endAt = zonedDateTimeToUtc(nextDateIso, "00:00", timeZone);
+    if (!startAt || !endAt) {
+      return null;
+    }
+    return {
+      hasTime: false,
+      startAt,
+      endAt,
+    };
+  }
+
+  const startAt = zonedDateTimeToUtc(dateInput, startTime, timeZone);
+  if (!startAt) {
+    return null;
+  }
+
+  let endAt;
+  if (endTime) {
+    endAt = zonedDateTimeToUtc(dateInput, endTime, timeZone);
+    if (!endAt) {
+      return null;
+    }
+    if (endAt.getTime() <= startAt.getTime()) {
+      endAt = new Date(endAt.getTime() + 24 * 60 * 60 * 1000);
+    }
+  } else {
+    endAt = new Date(startAt.getTime() + DEFAULT_EVENT_DURATION_MINUTES * 60 * 1000);
+  }
+
+  return {
+    hasTime: true,
+    startAt,
+    endAt,
+  };
+}
+
+function isValidDateIso(dateInput) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(dateInput || "").trim());
+}
+
+function incrementDateIso(dateInput) {
+  const parts = dateInput.split("-").map(Number);
+  const nextDay = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1));
+  return [
+    String(nextDay.getUTCFullYear()),
+    String(nextDay.getUTCMonth() + 1).padStart(2, "0"),
+    String(nextDay.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function resolveTimeZone(rawTimeZone) {
+  const value = String(rawTimeZone || "").trim();
+  if (!value) {
+    return DEFAULT_TIME_ZONE;
+  }
+
+  const alias = TIME_ZONE_ALIASES[value.toUpperCase()];
+  if (alias) {
+    return alias;
+  }
+
+  if (isValidTimeZone(value)) {
+    return value;
+  }
+
+  return DEFAULT_TIME_ZONE;
+}
+
+function isValidTimeZone(timeZone) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function zonedDateTimeToUtc(dateInput, timeInput, timeZone) {
+  if (!isValidDateIso(dateInput) || !normalizeTimeInput(timeInput)) {
+    return null;
+  }
+
+  const [year, month, day] = dateInput.split("-").map(Number);
+  const [hour, minute] = normalizeTimeInput(timeInput).split(":").map(Number);
+
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+
+  let candidate = new Date(utcGuess);
+  let offset = getTimeZoneOffsetMs(candidate, timeZone);
+  let corrected = utcGuess - offset;
+  candidate = new Date(corrected);
+
+  const secondOffset = getTimeZoneOffsetMs(candidate, timeZone);
+  if (secondOffset !== offset) {
+    corrected = utcGuess - secondOffset;
+    candidate = new Date(corrected);
+  }
+
+  if (Number.isNaN(candidate.getTime())) {
+    return null;
+  }
+
+  return candidate;
+}
+
+function getTimeZoneOffsetMs(date, timeZone) {
+  const parts = getTimeZoneParts(date, timeZone);
+  const asUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second
+  );
+  return asUtc - date.getTime();
+}
+
+function getTimeZoneParts(date, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(date);
+  const map = {};
+  parts.forEach((part) => {
+    if (part.type !== "literal") {
+      map[part.type] = Number(part.value);
+    }
+  });
+
+  return {
+    year: map.year,
+    month: map.month,
+    day: map.day,
+    hour: map.hour,
+    minute: map.minute,
+    second: map.second,
+  };
 }
 
 function renderSeminars(seminars) {
   const now = new Date();
   const visible = seminars.filter((s) => s.isPublished);
-  const upcoming = visible.filter((s) => s.date >= now);
-  const past = visible.filter((s) => s.date < now).reverse();
+  const upcoming = visible.filter((s) => s.endAt >= now);
+  const past = visible.filter((s) => s.endAt < now).reverse();
 
   renderCardGroup(upcomingList, upcoming, false);
   renderCardGroup(pastList, past, true);
@@ -170,50 +359,168 @@ function renderSeminars(seminars) {
 
 function renderCardGroup(target, seminars, isPast) {
   target.innerHTML = "";
+
   seminars.forEach((seminar, index) => {
     const card = document.createElement("article");
     card.className = "card";
     card.style.animationDelay = `${Math.min(index * 40, 240)}ms`;
 
-    const dateLabel = seminar.date.toLocaleString(
-      undefined,
-      seminar.hasTime
-        ? {
-            weekday: "short",
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          }
-        : {
-            weekday: "short",
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }
-    );
+    const dateLabel = formatEventDate(seminar.startAt, seminar.timeZone);
+    const timeLabel = seminar.hasTime
+      ? buildTimeLabel(seminar.startTime, seminar.endTime, seminar.timeZoneLabel)
+      : `All day ${seminar.timeZoneLabel}`;
 
-    const metaPieces = [escapeHtml(dateLabel)];
+    const metaPieces = [escapeHtml(dateLabel), escapeHtml(timeLabel)];
     if (seminar.venue) {
       metaPieces.push(escapeHtml(seminar.venue));
     }
 
+    const speakerNameHtml = seminar.speakerPortfolio
+      ? `${escapeHtml(seminar.speaker)} &middot; <a class="speaker-portfolio-link" href="${escapeAttribute(
+          seminar.speakerPortfolio
+        )}" target="_blank" rel="noopener noreferrer">Speaker Portfolio</a>`
+      : escapeHtml(seminar.speaker);
+    const speakerDetailHtml = seminar.speakerDetail
+      ? `<p class="speaker-detail">${escapeHtml(seminar.speakerDetail)}</p>`
+      : "";
+
+    const actions = [];
+    if (!isPast) {
+      actions.push(
+        `<a class="register-link" href="${escapeAttribute(seminar.registerLink)}" target="_blank" rel="noopener noreferrer">Open Link</a>`
+      );
+      actions.push(
+        `<a class="calendar-link" href="${escapeAttribute(
+          buildIcsDataUrl(seminar)
+        )}" download="${escapeAttribute(buildIcsFileName(seminar))}">Add to Calendar (.ics)</a>`
+      );
+    }
+
+    const actionsHtml = actions.length
+      ? `<div class="card-actions">${actions.join("")}</div>`
+      : "";
+
     card.innerHTML = `
       <span class="chip">${isPast ? "Past Seminar" : "Upcoming Seminar"}</span>
       <h3>${escapeHtml(seminar.title)}</h3>
-      <p class="speaker">${escapeHtml(seminar.speaker)}</p>
+      <p class="speaker">${speakerNameHtml}</p>
+      ${speakerDetailHtml}
       <div class="card-meta">${metaPieces.join(" &middot; ")}</div>
       ${seminar.abstract ? `<p>${escapeHtml(seminar.abstract)}</p>` : ""}
-      ${
-        isPast
-          ? ""
-          : `<a class="register-link" href="${escapeAttribute(seminar.registerLink)}" target="_blank" rel="noopener noreferrer">Open Link</a>`
-      }
+      ${actionsHtml}
     `;
 
     target.appendChild(card);
   });
+}
+
+function formatEventDate(date, timeZone) {
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone,
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function buildTimeLabel(startTime, endTime, timeZoneLabel) {
+  if (endTime) {
+    return `${startTime}-${endTime} ${timeZoneLabel}`;
+  }
+  return `${startTime} ${timeZoneLabel}`;
+}
+
+function buildIcsDataUrl(seminar) {
+  const content = buildIcsContent(seminar);
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(content)}`;
+}
+
+function buildIcsFileName(seminar) {
+  const datePart = seminar.dateIso || formatDateOnlyUtc(seminar.startAt);
+  const titlePart = slugify(seminar.title);
+  return `${datePart}-${titlePart}.ics`;
+}
+
+function buildIcsContent(seminar) {
+  const uid = `${seminar.startAt.getTime()}-${slugify(seminar.title)}@epistemology-seminars`;
+  const dtstamp = formatIcsUtc(new Date());
+
+  const descriptionParts = [`Speaker: ${seminar.speaker}`];
+  if (seminar.speakerDetail) {
+    descriptionParts.push(`Speaker details: ${seminar.speakerDetail}`);
+  }
+  if (seminar.abstract) {
+    descriptionParts.push(`Abstract: ${seminar.abstract}`);
+  }
+  if (seminar.registerLink) {
+    descriptionParts.push(`Link: ${seminar.registerLink}`);
+  }
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Epistemology Seminars//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${escapeIcsText(uid)}`,
+    `DTSTAMP:${dtstamp}`,
+  ];
+
+  if (seminar.hasTime) {
+    lines.push(`DTSTART:${formatIcsUtc(seminar.startAt)}`);
+    lines.push(`DTEND:${formatIcsUtc(seminar.endAt)}`);
+  } else {
+    lines.push(`DTSTART;VALUE=DATE:${formatIcsDateInZone(seminar.startAt, seminar.timeZone)}`);
+    lines.push(`DTEND;VALUE=DATE:${formatIcsDateInZone(seminar.endAt, seminar.timeZone)}`);
+  }
+
+  lines.push(`SUMMARY:${escapeIcsText(seminar.title)}`);
+  lines.push(`DESCRIPTION:${escapeIcsText(descriptionParts.join("\n\n"))}`);
+
+  if (seminar.venue) {
+    lines.push(`LOCATION:${escapeIcsText(seminar.venue)}`);
+  }
+  if (seminar.registerLink) {
+    lines.push(`URL:${escapeIcsText(seminar.registerLink)}`);
+  }
+
+  lines.push("END:VEVENT");
+  lines.push("END:VCALENDAR");
+
+  return `${lines.join("\r\n")}\r\n`;
+}
+
+function formatIcsUtc(date) {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function formatIcsDateInZone(date, timeZone) {
+  const parts = getTimeZoneParts(date, timeZone);
+  return `${parts.year}${String(parts.month).padStart(2, "0")}${String(parts.day).padStart(2, "0")}`;
+}
+
+function formatDateOnlyUtc(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function escapeIcsText(value) {
+  return String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function slugify(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "seminar";
 }
 
 function escapeHtml(value) {

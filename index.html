@@ -19,7 +19,6 @@
     <h1>Epistemology Seminars</h1>
     <p class="hero-copy">
       Weekly talks on knowledge, justification, and related philosophy of mind topics.
-      Add seminar rows in the Google Sheet and this page updates automatically.
     </p>
   </header>
 
@@ -28,23 +27,23 @@
       <div class="panel-head">
         <h2>Upcoming Seminars</h2>
       </div>
+      <p class="timezone-note">
+        Times follow each seminar's <code>timezone</code> value. If blank, CEST/CET is assumed.
+      </p>
       <div id="upcoming-list" class="cards"></div>
-      <p id="upcoming-empty" class="empty hidden">No upcoming seminars yet.</p>
+      <p id="upcoming-empty" class="empty hidden">No upcoming seminars yet. Stay tuned.</p>
     </section>
 
     <section class="panel">
       <h2>Past Seminars</h2>
-      <details>
-        <summary>Show archive</summary>
-        <div id="past-list" class="cards cards-past"></div>
-        <p id="past-empty" class="empty hidden">No past seminars.</p>
-      </details>
+      <div id="past-list" class="cards cards-past"></div>
+      <p id="past-empty" class="empty hidden">No past seminars.</p>
     </section>
   </main>
 
   <footer class="container footer">
     <p>
-      Professor workflow: edit one Google Sheet row with date, speaker, title, and link.
+      &copy; <span id="copyright-year"></span> Prof. Miklos Redei. All rights reserved.
     </p>
   </footer>
 
