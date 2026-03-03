@@ -4,9 +4,11 @@ const upcomingList = document.getElementById("upcoming-list");
 const pastList = document.getElementById("past-list");
 const upcomingEmpty = document.getElementById("upcoming-empty");
 const pastEmpty = document.getElementById("past-empty");
+const copyrightYear = document.getElementById("copyright-year");
 const DEFAULT_UPCOMING_EMPTY_TEXT =
   upcomingEmpty?.textContent || "No upcoming seminars yet";
 
+setCurrentYear();
 showLoadingState();
 
 init().catch((err) => {
@@ -22,6 +24,12 @@ function showLoadingState() {
   }
   if (pastEmpty) {
     pastEmpty.classList.add("hidden");
+  }
+}
+
+function setCurrentYear() {
+  if (copyrightYear) {
+    copyrightYear.textContent = String(new Date().getFullYear());
   }
 }
 
