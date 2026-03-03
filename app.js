@@ -125,9 +125,9 @@ function splitCsvLine(line) {
 function normalizeSeminar(raw) {
   const requiredFields = ["date", "speaker", "title"];
   const missing = requiredFields.find((field) => !raw[field]);
-  const registerLink = (raw.link || raw.register_link || "").trim();
+  const registerLink = normalizeExternalUrl(raw.link || raw.register_link || "");
 
-  if (missing || !registerLink) {
+  if (missing) {
     return { ok: false };
   }
 
@@ -157,7 +157,7 @@ function normalizeSeminar(raw) {
       title: raw.title,
       speaker: raw.speaker,
       speakerDetail: (raw.speaker_detail || raw.affiliation || "").trim(),
-      speakerPortfolio: (raw.speaker_portfolio || raw.speaker_url || "").trim(),
+      speakerPortfolio: normalizeExternalUrl(raw.speaker_portfolio || raw.speaker_url || ""),
       venue: raw.venue || "",
       registerLink,
       abstract: raw.abstract || "",
@@ -184,6 +184,33 @@ function normalizeTimeInput(value) {
   }
 
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function normalizeExternalUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  if (raw.startsWith("//")) {
+    return normalizeExternalUrl(`https:${raw}`);
+  }
+
+  if (/^(https?:|mailto:|tel:)/i.test(raw)) {
+    return isValidExternalUrl(raw) ? raw : "";
+  }
+
+  const normalized = `https://${raw.replace(/^\/+/, "")}`;
+  return isValidExternalUrl(normalized) ? normalized : "";
+}
+
+function isValidExternalUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return ["http:", "https:", "mailto:", "tel:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
 }
 
 function parseSeminarWindow(dateInput, startTime, endTime, timeZone) {
@@ -385,7 +412,7 @@ function renderCardGroup(target, seminars, isPast) {
       : "";
 
     const actions = [];
-    if (!isPast) {
+    if (!isPast && seminar.registerLink) {
       actions.push(
         `<a class="register-link" href="${escapeAttribute(seminar.registerLink)}" target="_blank" rel="noopener noreferrer">Open Link</a>`
       );

@@ -32,9 +32,9 @@ Then open the local URL from Wrangler output.
 ## Professor workflow (zero coding)
 
 1. Create a Google Sheet with headers:
-   `date,speaker,title,link`
+   `date,speaker,title`
 2. Optional headers:
-   `speaker_detail,speaker_portfolio,time,end_time,timezone,venue,abstract,published`
+   `link,speaker_detail,speaker_portfolio,time,end_time,timezone,venue,abstract,published`
 3. Make sure the sheet is publicly readable (`Anyone with the link` as Viewer).
 4. The Worker is already configured to this sheet URL; optional override is `GOOGLE_SHEET_CSV_URL`.
 
