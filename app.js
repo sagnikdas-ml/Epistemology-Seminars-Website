@@ -376,9 +376,9 @@ function renderCardGroup(target, seminars, isPast) {
     }
 
     const speakerNameHtml = seminar.speakerPortfolio
-      ? `${escapeHtml(seminar.speaker)} &middot; <a class="speaker-portfolio-link" href="${escapeAttribute(
+      ? `<a class="speaker-portfolio-link" href="${escapeAttribute(
           seminar.speakerPortfolio
-        )}" target="_blank" rel="noopener noreferrer">Speaker Portfolio</a>`
+        )}" target="_blank" rel="noopener noreferrer">${escapeHtml(seminar.speaker)}</a>`
       : escapeHtml(seminar.speaker);
     const speakerDetailHtml = seminar.speakerDetail
       ? `<p class="speaker-detail">${escapeHtml(seminar.speakerDetail)}</p>`
@@ -389,12 +389,12 @@ function renderCardGroup(target, seminars, isPast) {
       actions.push(
         `<a class="register-link" href="${escapeAttribute(seminar.registerLink)}" target="_blank" rel="noopener noreferrer">Open Link</a>`
       );
-      actions.push(
-        `<a class="calendar-link" href="${escapeAttribute(
-          buildIcsDataUrl(seminar)
-        )}" download="${escapeAttribute(buildIcsFileName(seminar))}">Add to Calendar (.ics)</a>`
-      );
     }
+    actions.push(
+      `<a class="calendar-link" href="${escapeAttribute(
+        buildIcsDataUrl(seminar)
+      )}" download="${escapeAttribute(buildIcsFileName(seminar))}">Add to Calendar (.ics)</a>`
+    );
 
     const actionsHtml = actions.length
       ? `<div class="card-actions">${actions.join("")}</div>`
