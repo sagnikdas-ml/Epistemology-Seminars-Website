@@ -4,12 +4,26 @@ const upcomingList = document.getElementById("upcoming-list");
 const pastList = document.getElementById("past-list");
 const upcomingEmpty = document.getElementById("upcoming-empty");
 const pastEmpty = document.getElementById("past-empty");
+const DEFAULT_UPCOMING_EMPTY_TEXT =
+  upcomingEmpty?.textContent || "No upcoming seminars yet";
+
+showLoadingState();
 
 init().catch((err) => {
   upcomingEmpty.textContent = `Failed to load seminars: ${err.message}`;
   upcomingEmpty.classList.remove("hidden");
   pastEmpty.classList.add("hidden");
 });
+
+function showLoadingState() {
+  if (upcomingEmpty) {
+    upcomingEmpty.textContent = "Please wait, loading...";
+    upcomingEmpty.classList.remove("hidden");
+  }
+  if (pastEmpty) {
+    pastEmpty.classList.add("hidden");
+  }
+}
 
 async function init() {
   const csvText = await loadCsvFromApi(SEMINARS_API_ENDPOINT);
@@ -141,6 +155,7 @@ function renderSeminars(seminars) {
   renderCardGroup(upcomingList, upcoming, false);
   renderCardGroup(pastList, past, true);
 
+  upcomingEmpty.textContent = DEFAULT_UPCOMING_EMPTY_TEXT;
   upcomingEmpty.classList.toggle("hidden", upcoming.length > 0);
   pastEmpty.classList.toggle("hidden", past.length > 0);
 }
