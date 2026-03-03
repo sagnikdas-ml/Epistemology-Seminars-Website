@@ -48,7 +48,7 @@ async function init() {
     .map(normalizeSeminar)
     .filter((item) => item.ok)
     .map((item) => item.value)
-    .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+    .sort((a, b) => b.startAt.getTime() - a.startAt.getTime());
 
   renderSeminars(seminars);
 }
@@ -347,7 +347,7 @@ function renderSeminars(seminars) {
   const now = new Date();
   const visible = seminars.filter((s) => s.isPublished);
   const upcoming = visible.filter((s) => s.endAt >= now);
-  const past = visible.filter((s) => s.endAt < now).reverse();
+  const past = visible.filter((s) => s.endAt < now);
 
   renderCardGroup(upcomingList, upcoming, false);
   renderCardGroup(pastList, past, true);
