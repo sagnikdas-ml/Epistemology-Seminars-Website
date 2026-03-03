@@ -1,0 +1,18 @@
+name = "epistemology-seminars-website"
+main = "worker.js"
+compatibility_date = "2026-03-03"
+
+[vars]
+GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1c3-DSYihGVgSkFYPaWKqBkuYERTmFc8a4m1dF3HjrnQ/export?format=csv&gid=0"
+
+[assets]
+directory = "."
+binding = "ASSETS"
+exclude = [
+  ".git/**",
+  ".wrangler/**",
+  "node_modules/**",
+  "worker.js",
+  "wrangler.toml",
+  "README.md"
+]
