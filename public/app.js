@@ -414,7 +414,7 @@ function renderCardGroup(target, seminars, isPast) {
     const actions = [];
     if (!isPast && seminar.registerLink) {
       actions.push(
-        `<a class="register-link" href="${escapeAttribute(seminar.registerLink)}" target="_blank" rel="noopener noreferrer">Open Link</a>`
+        `<a class="register-link" href="${escapeAttribute(seminar.registerLink)}" target="_blank" rel="noopener noreferrer">Join Meeting Online</a>`
       );
     }
     actions.push(
