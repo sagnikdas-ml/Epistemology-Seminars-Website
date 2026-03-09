@@ -65,6 +65,11 @@ h2 {
   max-width: 70ch;
 }
 
+.host-inline {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+}
+
 .timezone-note {
   margin: 0 0 0.8rem;
   color: var(--muted);
@@ -88,29 +93,6 @@ h2 {
   align-items: end;
   gap: 1rem;
   flex-wrap: wrap;
-}
-
-.host-panel {
-  margin-top: 0;
-}
-
-.host-name {
-  margin: 0;
-  font-weight: 700;
-  font-size: 1.05rem;
-}
-
-.host-copy {
-  margin: 0.35rem 0 0.65rem;
-  color: var(--muted);
-}
-
-.host-actions {
-  margin: 0;
-}
-
-.host-link {
-  font-weight: 700;
 }
 
 .cards {
