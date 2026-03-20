@@ -14,8 +14,13 @@ const pastList = document.getElementById("past-list");
 const upcomingEmpty = document.getElementById("upcoming-empty");
 const pastEmpty = document.getElementById("past-empty");
 const copyrightYear = document.getElementById("copyright-year");
+const heroFeatureCard = document.getElementById("hero-feature-card");
+const heroSeriesCount = document.getElementById("hero-series-count");
+const heroNextDate = document.getElementById("hero-next-date");
 const DEFAULT_UPCOMING_EMPTY_TEXT =
   upcomingEmpty?.textContent || "No upcoming seminars yet";
+const DEFAULT_PAST_EMPTY_TEXT =
+  pastEmpty?.textContent || "No past seminars.";
 
 setCurrentYear();
 showLoadingState();
@@ -47,8 +52,7 @@ async function init() {
   const seminars = parseCsv(csvText)
     .map(normalizeSeminar)
     .filter((item) => item.ok)
-    .map((item) => item.value)
-    .sort((a, b) => b.startAt.getTime() - a.startAt.getTime());
+    .map((item) => item.value);
 
   renderSeminars(seminars);
 }
@@ -373,14 +377,30 @@ function getTimeZoneParts(date, timeZone) {
 function renderSeminars(seminars) {
   const now = new Date();
   const visible = seminars.filter((s) => s.isPublished);
-  const upcoming = visible.filter((s) => s.endAt >= now);
-  const past = visible.filter((s) => s.endAt < now);
+  const upcoming = visible
+    .filter((s) => s.endAt >= now)
+    .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+  const past = visible
+    .filter((s) => s.endAt < now)
+    .sort((a, b) => b.startAt.getTime() - a.startAt.getTime());
+  const remainingUpcoming = upcoming.slice(1);
 
-  renderCardGroup(upcomingList, upcoming, false);
+  renderHeroFeature(upcoming, past.length);
+  renderCardGroup(upcomingList, remainingUpcoming, false);
   renderCardGroup(pastList, past, true);
 
-  upcomingEmpty.textContent = DEFAULT_UPCOMING_EMPTY_TEXT;
-  upcomingEmpty.classList.toggle("hidden", upcoming.length > 0);
+  if (upcoming.length === 0) {
+    upcomingEmpty.textContent = DEFAULT_UPCOMING_EMPTY_TEXT;
+    upcomingEmpty.classList.remove("hidden");
+  } else if (remainingUpcoming.length === 0) {
+    upcomingEmpty.textContent = "No additional upcoming seminars yet.";
+    upcomingEmpty.classList.remove("hidden");
+  } else {
+    upcomingEmpty.textContent = DEFAULT_UPCOMING_EMPTY_TEXT;
+    upcomingEmpty.classList.add("hidden");
+  }
+
+  pastEmpty.textContent = DEFAULT_PAST_EMPTY_TEXT;
   pastEmpty.classList.toggle("hidden", past.length > 0);
 }
 
@@ -389,56 +409,230 @@ function renderCardGroup(target, seminars, isPast) {
 
   seminars.forEach((seminar, index) => {
     const card = document.createElement("article");
-    card.className = "card";
+    card.className = `card ${isPast ? "card-past" : "card-upcoming"}`;
     card.style.animationDelay = `${Math.min(index * 40, 240)}ms`;
-
-    const dateLabel = formatEventDate(seminar.startAt, seminar.timeZone);
-    const timeLabel = seminar.hasTime
-      ? buildTimeLabel(seminar.startTime, seminar.endTime, seminar.timeZoneLabel)
-      : `All day ${seminar.timeZoneLabel}`;
-
-    const metaPieces = [escapeHtml(dateLabel), escapeHtml(timeLabel)];
-    if (seminar.venue) {
-      metaPieces.push(escapeHtml(seminar.venue));
-    }
-
-    const speakerNameHtml = seminar.speakerPortfolio
-      ? `<a class="speaker-portfolio-link" href="${escapeAttribute(
-          seminar.speakerPortfolio
-        )}" target="_blank" rel="noopener noreferrer">${escapeHtml(seminar.speaker)}</a>`
-      : escapeHtml(seminar.speaker);
-    const speakerDetailHtml = seminar.speakerDetail
-      ? `<p class="speaker-detail">${escapeHtml(seminar.speakerDetail)}</p>`
-      : "";
-
-    const actions = [];
-    if (!isPast && seminar.registerLink) {
-      actions.push(
-        `<a class="register-link" href="${escapeAttribute(seminar.registerLink)}" target="_blank" rel="noopener noreferrer">Join Meeting Online</a>`
-      );
-    }
-    actions.push(
-      `<a class="calendar-link" href="${escapeAttribute(
-        buildIcsDataUrl(seminar)
-      )}" download="${escapeAttribute(buildIcsFileName(seminar))}">Add to Calendar (.ics)</a>`
-    );
-
-    const actionsHtml = actions.length
-      ? `<div class="card-actions">${actions.join("")}</div>`
-      : "";
-
-    card.innerHTML = `
-      <span class="chip">${isPast ? "Past Seminar" : "Upcoming Seminar"}</span>
-      <h3>${escapeHtml(seminar.title)}</h3>
-      <p class="speaker">${speakerNameHtml}</p>
-      ${speakerDetailHtml}
-      <div class="card-meta">${metaPieces.join(" &middot; ")}</div>
-      ${seminar.abstract ? `<p>${escapeHtml(seminar.abstract)}</p>` : ""}
-      ${actionsHtml}
-    `;
+    card.innerHTML = buildSeminarCardMarkup(seminar, isPast);
 
     target.appendChild(card);
   });
+}
+
+function renderHeroFeature(upcoming, archivedCount) {
+  if (!heroFeatureCard || !heroSeriesCount || !heroNextDate) {
+    return;
+  }
+
+  heroSeriesCount.textContent = buildSeriesCountLabel(upcoming.length, archivedCount);
+
+  if (upcoming.length === 0) {
+    heroNextDate.textContent = "To be announced";
+    heroFeatureCard.innerHTML = `
+      <div class="hero-feature-empty">
+        <p id="hero-feature-title" class="hero-feature-title">New seminars will appear here.</p>
+        <p class="hero-feature-copy">As soon as the sheet is updated, the next confirmed date will be featured in this space.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const seminar = upcoming[0];
+  const metaPieces = buildMetaPieces(seminar, false);
+  const actionsHtml = buildActionsMarkup(seminar, false);
+  const speakerNameHtml = buildSpeakerNameHtml(seminar);
+  const speakerDetailHtml = seminar.speakerDetail
+    ? `<p class="speaker-detail">${escapeHtml(seminar.speakerDetail)}</p>`
+    : "";
+  const abstractHtml = seminar.abstract
+    ? `<p class="hero-feature-copy">${escapeHtml(truncateText(seminar.abstract, 320))}</p>`
+    : `<p class="hero-feature-copy">A live seminar in the current series.</p>`;
+
+  heroNextDate.textContent = formatHeroDate(seminar.startAt, seminar.timeZone);
+  heroFeatureCard.innerHTML = `
+    <p id="hero-feature-title" class="hero-feature-title">${escapeHtml(seminar.title)}</p>
+    <p class="speaker">${speakerNameHtml}</p>
+    ${speakerDetailHtml}
+    <div class="hero-feature-meta">${metaPieces.join(" &middot; ")}</div>
+    ${abstractHtml}
+    ${actionsHtml ? `<div class="hero-feature-actions">${actionsHtml}</div>` : ""}
+  `;
+}
+
+function buildSeminarCardMarkup(seminar, isPast) {
+  const metaPieces = buildMetaPieces(seminar, isPast);
+  const speakerNameHtml = buildSpeakerNameHtml(seminar);
+  const speakerDetailHtml = seminar.speakerDetail
+    ? `<p class="speaker-detail">${escapeHtml(seminar.speakerDetail)}</p>`
+    : "";
+  const abstractHtml = seminar.abstract
+    ? `<p class="abstract">${escapeHtml(seminar.abstract)}</p>`
+    : "";
+  const actionsHtml = buildActionsMarkup(seminar, isPast);
+
+  return `
+    <div class="card-shell">
+      ${buildDateBlockMarkup(seminar)}
+      <div class="card-main">
+        <span class="chip">${isPast ? "Archive" : buildRelativeLabel(seminar)}</span>
+        <h3>${escapeHtml(seminar.title)}</h3>
+        <p class="speaker">${speakerNameHtml}</p>
+        ${speakerDetailHtml}
+        <div class="card-meta">${metaPieces.join(" &middot; ")}</div>
+        ${abstractHtml}
+        ${actionsHtml ? `<div class="card-actions">${actionsHtml}</div>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function buildSpeakerNameHtml(seminar) {
+  if (seminar.speakerPortfolio) {
+    return `<a class="speaker-portfolio-link" href="${escapeAttribute(
+      seminar.speakerPortfolio
+    )}" target="_blank" rel="noopener noreferrer">${escapeHtml(seminar.speaker)}</a>`;
+  }
+
+  return escapeHtml(seminar.speaker);
+}
+
+function buildMetaPieces(seminar, isPast) {
+  const dateLabel = formatEventDate(seminar.startAt, seminar.timeZone);
+  const timeLabel = seminar.hasTime
+    ? buildTimeLabel(seminar.startTime, seminar.endTime, seminar.timeZoneLabel)
+    : `All day ${seminar.timeZoneLabel}`;
+  const metaPieces = [escapeHtml(dateLabel), escapeHtml(timeLabel)];
+
+  if (seminar.venue) {
+    metaPieces.push(escapeHtml(seminar.venue));
+  }
+
+  if (!isPast) {
+    metaPieces.push(escapeHtml(buildCountdownLabel(seminar.startAt)));
+  }
+
+  return metaPieces;
+}
+
+function buildActionsMarkup(seminar, isPast) {
+  const actions = [];
+
+  if (!isPast && seminar.registerLink) {
+    actions.push(
+      `<a class="register-link" href="${escapeAttribute(seminar.registerLink)}" target="_blank" rel="noopener noreferrer">Join Meeting Online</a>`
+    );
+  }
+
+  actions.push(
+    `<a class="calendar-link" href="${escapeAttribute(
+      buildIcsDataUrl(seminar)
+    )}" download="${escapeAttribute(buildIcsFileName(seminar))}">Add to Calendar (.ics)</a>`
+  );
+
+  return actions.join("");
+}
+
+function buildDateBlockMarkup(seminar) {
+  const parts = formatDateBlockParts(seminar.startAt, seminar.timeZone);
+
+  return `
+    <div class="card-date-block" aria-hidden="true">
+      <span class="card-date-month">${escapeHtml(parts.month)}</span>
+      <span class="card-date-day">${escapeHtml(parts.day)}</span>
+      <span class="card-date-weekday">${escapeHtml(parts.weekday)}</span>
+    </div>
+  `;
+}
+
+function buildSeriesCountLabel(upcomingCount, archivedCount) {
+  const parts = [];
+
+  if (upcomingCount > 0) {
+    parts.push(`${upcomingCount} upcoming`);
+  }
+
+  if (archivedCount > 0) {
+    parts.push(`${archivedCount} archived`);
+  }
+
+  if (parts.length > 0) {
+    return parts.join(" / ");
+  }
+
+  return "Schedule pending";
+}
+
+function buildRelativeLabel(seminar) {
+  const msUntilStart = seminar.startAt.getTime() - Date.now();
+  const dayDiff = Math.floor(msUntilStart / (24 * 60 * 60 * 1000));
+
+  if (dayDiff <= 0) {
+    return "Next Up";
+  }
+  if (dayDiff === 1) {
+    return "Tomorrow";
+  }
+  if (dayDiff < 7) {
+    return `In ${dayDiff} days`;
+  }
+  if (dayDiff < 14) {
+    return "Next Week";
+  }
+
+  return "Upcoming";
+}
+
+function buildCountdownLabel(startAt) {
+  const diffMs = startAt.getTime() - Date.now();
+  const dayDiff = Math.round(diffMs / (24 * 60 * 60 * 1000));
+
+  if (dayDiff <= 0) {
+    return "Happening soon";
+  }
+  if (dayDiff === 1) {
+    return "Starts tomorrow";
+  }
+  if (dayDiff < 7) {
+    return `Starts in ${dayDiff} days`;
+  }
+  if (dayDiff < 30) {
+    return `Starts in ${Math.round(dayDiff / 7)} week${Math.round(dayDiff / 7) === 1 ? "" : "s"}`;
+  }
+
+  return "Later this term";
+}
+
+function formatDateBlockParts(date, timeZone) {
+  return {
+    month: new Intl.DateTimeFormat(undefined, {
+      timeZone,
+      month: "short",
+    }).format(date),
+    day: new Intl.DateTimeFormat(undefined, {
+      timeZone,
+      day: "numeric",
+    }).format(date),
+    weekday: new Intl.DateTimeFormat(undefined, {
+      timeZone,
+      weekday: "short",
+    }).format(date),
+  };
+}
+
+function formatHeroDate(date, timeZone) {
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone,
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function truncateText(value, maxLength) {
+  const text = String(value || "").trim();
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
 
 function formatEventDate(date, timeZone) {

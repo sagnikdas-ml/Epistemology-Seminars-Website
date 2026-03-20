@@ -15,36 +15,67 @@
   <div class="bg-shape bg-shape-b" aria-hidden="true"></div>
 
   <header class="hero container">
-    <p class="eyebrow">Department of Liberal Arts & Social Sciences</p>
-    <h1>Philosophy of Science and Formal Epistemology</h1>
-    <p class="hero-copy">
-      Research seminar series at the University of Technology Nuremberg.
-    </p>
-    <p class="host-inline">
-      Host: <a
-        class="speaker-portfolio-link"
-        href="https://personal.lse.ac.uk/redeim/index.html"
-        target="_blank"
-        rel="noopener noreferrer"
-      >Prof. Miklos Redei</a>
-    </p>
+    <div class="hero-grid">
+      <div class="hero-copy-block">
+        <p class="eyebrow">UTN Seminar Series</p>
+        <p class="hero-context">Department of Liberal Arts &amp; Social Sciences</p>
+        <h1 class="hero-title">Philosophy of Science &amp; Formal Epistemology</h1>
+        <p class="hero-copy">
+          Research seminar series at the University of Technology Nuremberg.
+        </p>
+        <div class="hero-meta" aria-label="Series details">
+          <p class="host-inline host-chip">
+            Hosted by <a
+              class="speaker-portfolio-link"
+              href="https://personal.lse.ac.uk/redeim/index.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >Prof. Miklos Redei</a>
+          </p>
+        </div>
+        <div class="hero-notes" aria-label="Seminar overview">
+          <div class="hero-note">
+            <span class="hero-note-label">Current Series</span>
+            <strong id="hero-series-count">Loading seminars</strong>
+          </div>
+          <div class="hero-note">
+            <span class="hero-note-label">Next Date</span>
+            <strong id="hero-next-date">To be announced</strong>
+          </div>
+        </div>
+      </div>
+
+      <aside class="hero-feature panel panel-hero" aria-labelledby="hero-feature-title">
+        <p class="hero-feature-label">Next Seminar</p>
+        <div id="hero-feature-card" class="hero-feature-card">
+          <p id="hero-feature-title" class="hero-feature-title">Loading upcoming seminar...</p>
+          <p class="hero-feature-copy">The next confirmed talk will appear here automatically.</p>
+        </div>
+      </aside>
+    </div>
   </header>
 
   <main class="container">
-    <section class="panel">
+    <section class="panel panel-program">
       <div class="panel-head">
-        <h2>Upcoming Seminars</h2>
+        <div>
+          <p class="section-kicker">Program</p>
+          <h2>Further Upcoming Seminars</h2>
+        </div>
       </div>
-      <!-- <p class="timezone-note">
-        Times follow each seminar's <code>timezone</code> value. If blank, CEST/CET is assumed.
-      </p> -->
       <div id="upcoming-list" class="cards"></div>
       <p id="upcoming-empty" class="empty hidden">No upcoming seminars yet. Stay tuned. 😊</p>
     </section>
 
-    <section class="panel">
-      <h2>Past Seminars</h2>
-      <div id="past-list" class="cards cards-past"></div>
+    <section class="panel panel-archive">
+      <div class="panel-head">
+        <div>
+          <p class="section-kicker">Archive</p>
+          <h2>Past Seminars</h2>
+        </div>
+        <p class="section-copy">A running record of previous talks, ordered from most recent backward.</p>
+      </div>
+      <div id="past-list" class="cards cards-past archive-list"></div>
       <p id="past-empty" class="empty hidden">No past seminars.</p>
     </section>
   </main>
