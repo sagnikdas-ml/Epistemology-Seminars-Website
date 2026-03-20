@@ -491,6 +491,7 @@ summary {
 .footer {
   padding: 1.2rem 0 2.5rem;
   color: var(--muted);
+  text-align: center;
 }
 
 .bg-shape {
