@@ -443,7 +443,7 @@ function renderHeroFeature(upcoming, archivedCount) {
     ? `<p class="speaker-detail">${escapeHtml(seminar.speakerDetail)}</p>`
     : "";
   const abstractHtml = seminar.abstract
-    ? `<p class="hero-feature-copy">${escapeHtml(truncateText(seminar.abstract, 320))}</p>`
+    ? `<p class="hero-feature-copy">${escapeHtml(seminar.abstract)}</p>`
     : `<p class="hero-feature-copy">A live seminar in the current series.</p>`;
 
   heroNextDate.textContent = formatHeroDate(seminar.startAt, seminar.timeZone);
@@ -624,15 +624,6 @@ function formatHeroDate(date, timeZone) {
     day: "numeric",
     year: "numeric",
   }).format(date);
-}
-
-function truncateText(value, maxLength) {
-  const text = String(value || "").trim();
-  if (text.length <= maxLength) {
-    return text;
-  }
-
-  return `${text.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
 
 function formatEventDate(date, timeZone) {
