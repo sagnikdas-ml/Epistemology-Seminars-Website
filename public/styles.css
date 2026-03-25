@@ -301,6 +301,7 @@ h2 {
   border: 1px solid var(--stroke);
   border-radius: 16px;
   padding: 1rem;
+  min-height: 15rem;
   display: grid;
   gap: 0.6rem;
   animation: popIn 360ms ease both;
@@ -404,10 +405,7 @@ h2 {
 
 .abstract {
   color: color-mix(in srgb, var(--text) 82%, var(--muted) 18%);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .speaker-portfolio-link {
